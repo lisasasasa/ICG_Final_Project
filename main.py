@@ -1,26 +1,23 @@
-#import imgkit
 from PIL import Image
 
-#imgkit.from_file('index.html', 'out2.jpg')
+#=============== Collect color from website ===============
+print(f'=============== Collect color from website ===============')
+
+#Read line by line to get the color
 need_color = []
 with open("index.html", "r") as f:
     for line in f.readlines():
         if 'color' in line:
             need_color.append((int(line.split('#')[1][:2], 16), int(line.split('#')[1][2:4], 16), int(line.split('#')[1][4:6], 16)))
+f.close()
 
-for i in need_color:
-    print(i)
+for _, color in enumerate(need_color):
+    print(f'Color {_}: {color}')
 
+#=============== Wait for color harmonization ===============
 reply = input("Are you ready?\n")
 
-#Goal: make change list
-#https://stackoverflow.com/questions/138250/how-to-read-the-rgb-value-of-a-given-pixel-in-python
-pa2pb = {}
-im1 = Image.open('pdf_img/12.jpg')
-im2 = Image.open('pdf_img_convert/green_and_blue0.jpg')
-pix1 = im1.load()
-pix2 = im2.load()
-
+#=============== Define blurry function to deal RBG color's problem ===============
 def blurry(find):
     if find in need_color:
         return find
@@ -30,7 +27,23 @@ def blurry(find):
             return color
     return None
 
+#=============== Open add.js file ===============
+#https://stackoverflow.com/questions/51169182/how-to-insert-one-line-code-in-the-middle-of-the-html-file-by-using-python
+src = """
+<script src="add.js"></script>
+"""
+with open("index.html", "r+") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        if '<head>' in line:
+            lines[i] = lines[i] + src
+    f.truncate()
+    f.seek(0)                                           # rewrite into the file
+    for line in lines:
+        f.write(line)
+f.close()
 
+#=============== Open add.js file ===============
 f2 = open("add.js", "w")
 f2.write(
 """
@@ -38,14 +51,28 @@ window.addEventListener('DOMContentLoaded', function() {
     x = document.body.querySelectorAll("*");
     for (i = 0; i < x.length; i++) {
 """)
+
+#=============== Find Color Change list ===============
+#https://stackoverflow.com/questions/138250/how-to-read-the-rgb-value-of-a-given-pixel-in-python
+image1, image2 = 'pdf_img/12.jpg', 'pdf_img_convert/green_and_blue0.jpg'
+pa2pb = {}
+im1 = Image.open(image1)
+im2 = Image.open(image2)
+pix1 = im1.load()
+pix2 = im2.load()
+print(f'Open {image1} and {image2} successfully! Start to write the add.js to change the color !')
+
+
+# Go through pixel to change the color
 w, h = im2.size[0], im2.size[1]
-print(type(pix1[10, 20]))
-print(pix1[10, 20])
+take_color = 0
 for x in range(w):
     for y in range(h):
         check = blurry(pix1[2 * x, 2 * y])
         if(check != None and pa2pb.get(check) == None):
             pa2pb[check] = pix2[x, y]
+            print(f'Change color {check} to color {pix2[x, y]}')
+            take_color = take_color + 1
             f2.write(
             """
             if(x[i].style.backgroundColor == "rgb%s"){
@@ -56,6 +83,11 @@ for x in range(w):
             }
             """ %(check,  pix2[x, y],  check, pix2[x, y])
             )
+        if take_color is len(need_color):
+            break
+    if take_color is len(need_color):
+            print(f'Finish all color binding!')
+            break
 
 f2.write(
 """
@@ -64,5 +96,5 @@ f2.write(
 )
 """
 )
-#print(pa2pb)
+
 
