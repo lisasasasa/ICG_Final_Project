@@ -1,8 +1,4 @@
-### Time: 20190904
-### Author: YaoLing
-### Des: pdf convert to jpg
-
-# -*- coding: UTF-8 -*-
+# inference:https://github.com/tartarskunk/ColorHarmonization?fbclid=IwAR0zfF0lc3ySeeFJQ79arX0XpFZ0c2xBeFXSJFpPeCmjrXQPy7n4grkLSAE
 import os
 import cv2
 import sys
@@ -12,23 +8,28 @@ import importlib
 import gc
 import os
 import shutil
-from pdf2image import convert_from_path ## pip install pdf2image  or pip install --user pdf2image
+from pdf2image import convert_from_path 
+
+# convert pdf to image
+# user can input their pdf file name
 if os.path.exists('pdf_img'):
     shutil.rmtree('pdf_img') 
-if not os.path.exists('pdf_img'):
-    os.mkdir('pdf_img')   
-#pdf_name = "test1.pdf"
+os.mkdir('pdf_img')   
 print("pdf file name")
 pdf_name = input()
-jpg_name = 'pdf_img/'+pdf_name[:-4]+'.jpg'
-
+jpg_name = 'pdf_img/'+pdf_name[:-4]
 pages = convert_from_path(pdf_name, 500)
+count = 0
 for page in pages:
     print(page.size)
-    page.save(jpg_name, 'JPEG')
+    page.save(jpg_name+str(count)+'.jpg', 'JPEG')
+    count += 1
+# change colors of pdf images
+# user can choice which color type do they want
 print("which color do you want")
 print("red,orange,grass_green,bright_green,green_and_blue,blue,purple,pink")
 Type = input()
+# the color types we define
 colorType = {
     "red":{"alpha":0,"Templates":[(0,0.16)]},
     "orange":{"alpha":0,"Templates":[(0.08,0.08)]},
@@ -39,14 +40,7 @@ colorType = {
     "purple":{"alpha":0,"Templates":[(0.75,0.16)]},
     "pink":{"alpha":0,"Templates":[(0.83,0.16)]}
 }
-'''
-colorType = {
-    "red":{"alpha":0,"Templates":[(0,0.1)]},
-    "orange":{"alpha":36,"Templates":[(0,0.1)]},
-    "yellow":{"alpha":72,"Templates":[(0,0.1)]},
-    "grass_green":{"alpha":108,"Templates":[(0,0.1)]}
-}
-'''
+# the color types in reference paper
 HueTemplates = {
     "i"       : [( 0.00, 0.05)],
     "V"       : [( 0.00, 0.26)],
@@ -324,25 +318,8 @@ class HarmonicScheme:
             sector = HueSector(center, width)
             self.sectors.append( sector )
 
+# we change this part in github because we dont want to calculate which type are these image
 def B(X):
-    '''
-    F_matrix = np.zeros((M, A))
-    for i in range(M):
-        m = template_types[i]
-        for j in range(A):
-            alpha = 360/A * j
-            print(i,j)
-            harmomic_scheme = HarmonicScheme(m, alpha)
-            F_matrix[i, j] = harmomic_scheme.harmony_score(X)
-    (best_m_idx, best_alpha) = np.unravel_index( np.argmin(F_matrix), F_matrix.shape )
-    best_m = template_types[best_m_idx]
-
-    #best_m = "L"
-    best_alpha = np.argmin(F_matrix[best_m_idx])
-    #(best_m_idx, best_alpha) = np.unravel_index( np.argmin(F_matrix), F_matrix.shape )
-    #best_m = template_types[best_m_idx]
-    print(best_m)
-    '''
     #best_harmomic_scheme = HarmonicScheme('V', 0)
     best_harmomic_scheme = HarmonicScheme('SET', colorType[Type]["alpha"])
     #heme = HarmonicScheme('T', 4)
@@ -370,53 +347,34 @@ def BB(XT):
 
     best_harmomic_scheme = HarmonicScheme(best_m, best_alpha)
     return best_harmomic_scheme
-if not os.path.exists('pdf_img_convert'):
-    os.mkdir('pdf_img_convert')    
+if os.path.exists('pdf_img_convert'):
+    shutil.rmtree('pdf_img_convert')     
+os.mkdir('pdf_img_convert')    
 folder = 'pdf_img'
 filelist = os.listdir(folder)
 count = 0
+# implement on all pictures in pdf_img
 for filename in filelist:
     image_filename = folder+'/'+filename
-    # change image to width*height shape RGB tensor
     color_image = cv2.imread(image_filename, cv2.IMREAD_COLOR)
     weight,height = color_image.shape[0],color_image.shape[1]
-    print(weight,height)
+    # compress pictures and calculate faster
     color_image = cv2.resize(color_image, (int(color_image.shape[1]/2),int(color_image.shape[0]/2)),  interpolation=cv2.INTER_AREA)
-    print(color_image.shape)
-    #cv2.imshow("windows",color_image)
     HSV_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
     del color_image
     gc.collect()
-    #cv2.imshow("windows",HSV_image)
 
     best_harmomic_scheme = B(HSV_image)
-    print("Harmonic Scheme Type  : ", best_harmomic_scheme.m)
-    print("Harmonic Scheme Alpha : ", best_harmomic_scheme.alpha)
 
     histo = util.count_hue_histogram(HSV_image)
     canvas = util.draw_polar_histogram(histo)
     overlay = util.draw_harmonic_scheme(best_harmomic_scheme, canvas)
-    #cv2.imshow("windows",overlay)
     cv2.addWeighted(overlay, 0.5, canvas, 1 - 0.5, 0, canvas)
     cv2.imwrite("hue_source.jpg", canvas)
-
-    del overlay
-    gc.collect()
-
     num_superpixels = -1
     new_HSV_image = best_harmomic_scheme.hue_shifted(HSV_image, num_superpixels)
-    #cv2.imshow("window",new_HSV_image)
-    '''
-    histo = util.count_hue_histogram(new_HSV_image)
-    canvas = util.draw_polar_histogram(histo)
-    overlay = util.draw_harmonic_scheme(best_harmomic_scheme, canvas)
-    cv2.addWeighted(overlay, 0.5, canvas, 1 - 0.5, 0, canvas)
-    cv2.imwrite("hue_target.jpg", canvas)
-    '''
-
     result_image = cv2.cvtColor(new_HSV_image, cv2.COLOR_HSV2BGR)
-    color_image = cv2.resize(result_image, (height,weight), interpolation=cv2.INTER_AREA)
+    result = cv2.resize(result_image, (height,weight), interpolation=cv2.INTER_AREA)
     result_image = result_image.astype('int')
-    #cv2.imshow("windows",result_image)
     cv2.imwrite("pdf_img_convert/"+Type+str(count)+".jpg", result_image)    
-    count += 1    
+    count += 1 
