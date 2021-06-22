@@ -3,13 +3,13 @@ import os
 import cv2
 import sys
 import numpy as np
-from component import util
 import importlib
 import gc
 import os
 import shutil
 from pdf2image import convert_from_path
-
+sys.path.insert(1, '/component')
+import util
 # convert pdf to image
 # user can input their pdf file name
 if os.path.exists('pdf_img'):
