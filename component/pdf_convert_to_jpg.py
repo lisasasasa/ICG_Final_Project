@@ -3,18 +3,18 @@ import os
 import cv2
 import sys
 import numpy as np
-import util
+from component import util
 import importlib
 import gc
 import os
 import shutil
-from pdf2image import convert_from_path 
+from pdf2image import convert_from_path
 
 # convert pdf to image
 # user can input their pdf file name
 if os.path.exists('pdf_img'):
-    shutil.rmtree('pdf_img') 
-os.mkdir('pdf_img')   
+    shutil.rmtree('pdf_img')
+os.mkdir('pdf_img')
 print("pdf file name")
 pdf_name = input()
 jpg_name = 'pdf_img/'+pdf_name[:-4]
@@ -70,7 +70,7 @@ class HueSector:
         # True/False matrix if hue resides in the sector
         return deg_distance(H, self.center) < self.width/2
 
-    def distance_to_border(self, H):     
+    def distance_to_border(self, H):
         #H_1 = deg_distance(H, self.border[0])
         #H_2 = deg_distance(H, self.border[1])
         d1 = np.abs(H - self.border[0])
@@ -86,9 +86,9 @@ class HueSector:
         H_dist2bdr = np.minimum(H_1, H_2)
         del H_1,H_2
         gc.collect()
-        
+
         return H_dist2bdr
-        
+
     def closest_border(self, H):
         H_1 = deg_distance(H, self.border[0])
         H_2 = deg_distance(H, self.border[1])
@@ -125,14 +125,14 @@ class HarmonicScheme:
             width  = t[1] * 360
             sector = HueSector(center, width)
             self.sectors.append( sector )
-   
+
 
     def harmony_score(self, X):
         # Opencv store H as [0, 180) --> [0, 360)
         H = X[:, :, 0].astype(np.int32)* 2
         # Opencv store S as [0, 255] --> [0, 1]
         S = X[:, :, 1].astype(np.float32) / 255.0
-        
+
         H_dis = self.hue_distance(H)
         H_dis = np.deg2rad(H_dis)
         return np.sum( np.multiply(H_dis, S) )
@@ -143,7 +143,7 @@ class HarmonicScheme:
             sector = self.sectors[i]
             H_dis.append(sector.distance_to_border(H))
             H_dis[i][sector.is_in_sector(H)] = 0
-        H_dis = np.asarray(H_dis)        
+        H_dis = np.asarray(H_dis)
         H_dis = H_dis.min(axis=0)
         return H_dis
 
@@ -155,11 +155,11 @@ class HarmonicScheme:
         for sector in self.sectors:
             print(sector.distance_to_border(H))
             print(sector.distance_to_border(H).type)
-        '''    
+        '''
         H_d2b = [ sector.distance_to_border(H) for sector in self.sectors ]
         H_d2b = np.asarray(H_d2b)
         #S = X[:, :, 1].astype(np.float32) / 255.0
-        
+
         H_cls = np.argmin(H_d2b, axis=0)
         del H_d2b
         gc.collect()
@@ -191,20 +191,20 @@ class HarmonicScheme:
 
                 H_P = H[labels==l]
                 S_P = S[labels==l]
-                
+
                 H_V_P = H_P.copy()
                 for i in range(len(self.sectors)):
                     sector = self.sectors[i]
                     mask = (H_cls == i)
                     H_ctr[mask] = sector.center
                     H_V_P = H_ctr[labels==l]
-                
+
 
                     d = util.deg_distance(H_P, H_V_P)
-        
+
                     tmp = np.multiply(d, s)
                     e[i] = np.sum(tmp)
-                
+
                 if e[0] < e[1]:
                     H_cls[labels==i] = 0
                 else:
@@ -225,7 +225,7 @@ class HarmonicScheme:
         H_wid = np.zeros((H.shape))
         H_d2c = np.zeros((H.shape))
         H_dir = np.zeros((H.shape))
-        
+
         for i in range(len(self.sectors)):
             sector = self.sectors[i]
             mask = (H_cls == i)
@@ -235,7 +235,7 @@ class HarmonicScheme:
             H_dist2ctr = sector.distance_to_center(H)
             #H_dist2ctr[sector.is_in_sector(H)] = 0
             H_d2c += H_dist2ctr * mask
-            
+
         H_sgm = H_wid / 2
         H_gau = util.normalized_gaussian(H_d2c, 0, H_sgm)
         H_tmp = np.multiply(H_wid / 2, 1 - H_gau)
@@ -265,14 +265,14 @@ class HarmonicScheme:
         H = X[:, :, 0].astype(np.int32)* 2
         # Opencv store S as [0, 255] --> [0, 1]
         S = X[:, :, 1].astype(np.float32) / 255.0
-        
+
         H_P = H[ P[0], P[1] ]
         V_P = V[ P[0], P[1] ]
         S_P = S[ P[0], P[1] ]
 
         d = util.deg_distance(H_P, V_P)
         s = S_P
-        
+
         e1 = np.multiply(d, s)
         e1 = np.sum(e1)
         return e1
@@ -291,11 +291,11 @@ class HarmonicScheme:
         S_Q = S[ Q_set[0], Q_set[1] ]
         H_P = H[ P_set[0], P_set[1] ]
         H_Q = H[ Q_set[0], Q_set[1] ]
-        
+
         delta = util.delta( V_p, V_q )
         s_max = np.max((S_P, S_Q), axis=0)
         d = util.deg_distance(H_P, H_Q)
-        
+
         e2 = np.multiply( np.multiply( delta, s_max ), np.reciprocal(d) )
         e2 = np.sum(e2)
         return e2
@@ -348,8 +348,8 @@ def BB(XT):
     best_harmomic_scheme = HarmonicScheme(best_m, best_alpha)
     return best_harmomic_scheme
 if os.path.exists('pdf_img_convert'):
-    shutil.rmtree('pdf_img_convert')     
-os.mkdir('pdf_img_convert')    
+    shutil.rmtree('pdf_img_convert')
+os.mkdir('pdf_img_convert')
 folder = 'pdf_img'
 filelist = os.listdir(folder)
 count = 0
@@ -376,5 +376,5 @@ for filename in filelist:
     result_image = cv2.cvtColor(new_HSV_image, cv2.COLOR_HSV2BGR)
     result = cv2.resize(result_image, (height,weight), interpolation=cv2.INTER_AREA)
     result_image = result_image.astype('int')
-    cv2.imwrite("pdf_img_convert/"+Type+str(count)+".jpg", result_image)    
-    count += 1 
+    cv2.imwrite("pdf_img_convert/"+Type+str(count)+".jpg", result_image)
+    count += 1
