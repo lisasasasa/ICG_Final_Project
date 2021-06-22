@@ -1,10 +1,7 @@
 from PIL import Image
-import threading
+import subprocess
 import os
 dir_name = 'component'
-
-def run_pdf():
-    os.system("python3 component/pdf_convert_to_jpg.py")
 
 #=============== Collect color from website ===============
 print(f'=============== Collect color from website ===============')
@@ -23,10 +20,8 @@ for _, color in enumerate(need_color):
 #=============== Wait for color harmonization ===============
 #reply = input("Are you ready?\n")
 print(f'Waiting for color harmonization')
-thread = threading.Thread(target=run_pdf)
-thread.start()
-thread.join()
-
+p = subprocess.Popen("python3 component/pdf_convert_to_jpg.py", shell=True)
+p.wait()
 #=============== Define blurry function to deal RBG color's problem ===============
 def blurry(find):
     if find in need_color:
@@ -70,7 +65,7 @@ im1 = Image.open(image1)
 im2 = Image.open(image2)
 pix1 = im1.load()
 pix2 = im2.load()
-print(f'Open {image1} and {image2} successfully! Start to write the add.js to change the color !')
+print(f'Open image successfully!\nStart to write the add.js to change the color !')
 
 
 # Go through pixel to change the color
